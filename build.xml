@@ -1,0 +1,113 @@
+<project name="rollerbackup" basedir="." default="usage">
+	<xmlproperty file="build-props.xml"/>
+	<property name="tar" value="/bin/tar"/>
+	<property name="mktemp" value="/bin/mktemp"/>
+	<property name="gzip" value="/bin/gzip"/>
+
+	<target name="usage">
+		<echo>
+			targets:
+			- backup
+			- purge
+		</echo>
+	</target>
+
+	<tstamp>
+		<format property="now" pattern="yyyyMMdd_HHmmss"/>
+	</tstamp>
+	
+	<target name="backup" depends="backup-db"/>
+	
+	<target name="backup-db">
+		<fail unless="prop.source.ij"/>
+		<fail unless="prop.source.host"/>
+		<fail unless="prop.source.username"/>
+		<fail unless="prop.source.keyfile"/>
+		<fail unless="prop.source.database"/>
+		<fail unless="prop.source.server.host"/>
+		<fail unless="prop.source.server.port"/>
+		<mkdir dir="${prop.destination.path}"/>
+		
+		<property name="db.output.local" value="${prop.destination.path}/${now}.tar.gz"/>
+		<basename property="db.basename" file="${prop.source.database}"/>
+		<property name="db.parent" location="${prop.source.database}/../"/>
+		
+		<!-- create freeze script -->
+		<property name="script.freeze"
+		value="connect 'jdbc:derby://${prop.source.server.host}:${prop.source.server.port}/${prop.source.database}';&#10;CALL SYSCS_UTIL.SYSCS_FREEZE_DATABASE();&#10;exit;&#10;"/>
+		
+		<!-- create unfreeze script -->
+		<property name="script.unfreeze"
+		value="connect 'jdbc:derby://${prop.source.server.host}:${prop.source.server.port}/${prop.source.database}';&#10;CALL SYSCS_UTIL.SYSCS_UNFREEZE_DATABASE();&#10;exit;&#10;"/>
+		
+		<!-- freeze -->
+		<sshexec host="${prop.source.host}"
+				username="${prop.source.username}"
+				keyfile="${prop.source.keyfile}"
+				command="${prop.source.ij}"
+				inputproperty="script.freeze"
+				failonerror="true"/>
+		
+		<!-- create tmpfile, tar -->
+		<sshexec host="${prop.source.host}"
+				username="${prop.source.username}"
+				keyfile="${prop.source.keyfile}"
+				command="TMPFILE=`${mktemp}` &amp;&amp; ${tar} cf - -C ${db.parent} ${db.basename} | ${gzip} &gt; $${TMPFILE} &amp;&amp; echo $${TMPFILE}"
+				outputproperty="db.output.remote"
+				failonerror="false"/>
+		
+		<!-- unfreeze -->
+		<sshexec host="${prop.source.host}"
+				username="${prop.source.username}"
+				keyfile="${prop.source.keyfile}"
+				command="${prop.source.ij}"
+				inputproperty="script.unfreeze"
+				failonerror="true"/>
+		
+		<!-- download -->
+		<scp file="${prop.source.username}@${prop.source.host}:${db.output.remote}"
+			localTofile="${db.output.local}"
+			keyfile="${prop.source.keyfile}"
+			failonerror="false"/>
+		
+		<!-- delete -->
+		<sshexec host="${prop.source.host}"
+				username="${prop.source.username}"
+				keyfile="${prop.source.keyfile}"
+				command="rm -f ${db.output.remote}"
+				failonerror="true"/>
+				
+		<echo message="Created database backup: ${db.output.local}"/>
+	</target>
+
+	<target name="purge">
+		<fail unless="prop.destination.path"/>
+		<fail unless="prop.destination.preserves"/>
+		<resources id="var.sorted">
+			<sort>
+				<name/>
+				<fileset dir="${prop.destination.path}" includes="*"/>
+			</sort>
+		</resources>
+		
+		<resources id="var.preserves">
+			<last count="${prop.destination.preserves}">
+				<resources refid="var.sorted"/>
+			</last>
+		</resources>
+
+		<difference id="var.to-purge">
+			<resources refid="var.sorted"/>
+			<resources refid="var.preserves"/>
+		</difference>
+
+		<pathconvert property="files-to-delete" pathsep="," refid="var.to-purge"/>
+
+		<echo message="${files-to-delete}"/>
+		
+		<delete verbose="true">
+			<files includes="${files-to-delete}"/>
+		</delete>
+	</target>
+	
+</project>

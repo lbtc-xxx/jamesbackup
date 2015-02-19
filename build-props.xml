@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prop>
+	<source>
+		<host>www.nailedtothex.org</host>
+		<username>james</username>
+		<keyfile>/Users/kyle/.ssh/id_rsa</keyfile>
+		<database>/usr/local/james/var/store/derby</database>
+		<ij>/usr/local/derby/bin/ij</ij>
+		<server>
+			<host>localhost</host>
+			<port>11527</port>
+		</server>
+	</source>
+	<destination>
+		<path>/Users/kyle/james-backup</path>
+		<preserves>2</preserves>
+	</destination>
+</prop>
