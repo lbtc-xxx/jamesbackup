@@ -103,8 +103,6 @@
 
 		<pathconvert property="files-to-delete" pathsep="," refid="var.to-purge"/>
 
-		<echo message="${files-to-delete}"/>
-		
 		<delete verbose="true">
 			<files includes="${files-to-delete}"/>
 		</delete>
