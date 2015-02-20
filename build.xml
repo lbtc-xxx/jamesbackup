@@ -1,8 +1,7 @@
-<project name="rollerbackup" basedir="." default="usage">
+<project name="jamesbackup" basedir="." default="usage">
 	<xmlproperty file="build-props.xml"/>
 	<property name="tar" value="/bin/tar"/>
 	<property name="mktemp" value="/bin/mktemp"/>
-	<property name="gzip" value="/bin/gzip"/>
 
 	<target name="usage">
 		<echo>
@@ -28,7 +27,7 @@
 		<fail unless="prop.source.server.port"/>
 		<mkdir dir="${prop.destination.path}"/>
 		
-		<property name="db.output.local" value="${prop.destination.path}/${now}.tar.gz"/>
+		<property name="db.output.local" value="${prop.destination.path}/${now}.tar"/>
 		<basename property="db.basename" file="${prop.source.database}"/>
 		<property name="db.parent" location="${prop.source.database}/../"/>
 		
@@ -52,7 +51,7 @@
 		<sshexec host="${prop.source.host}"
 				username="${prop.source.username}"
 				keyfile="${prop.source.keyfile}"
-				command="TMPFILE=`${mktemp}` &amp;&amp; ${tar} cf - -C ${db.parent} ${db.basename} | ${gzip} &gt; $${TMPFILE} &amp;&amp; echo $${TMPFILE}"
+				command="TMPFILE=`${mktemp}` &amp;&amp; ${tar} cf - -C ${db.parent} ${db.basename} &gt; $${TMPFILE} &amp;&amp; echo $${TMPFILE}"
 				outputproperty="db.output.remote"
 				failonerror="false"/>
 		
@@ -77,7 +76,12 @@
 				command="rm -f ${db.output.remote}"
 				failonerror="true"/>
 				
-		<echo message="Created database backup: ${db.output.local}"/>
+		<!-- compress -->
+		<property name="db.output.local.compressed" value="${db.output.local}.gz"/>
+		<gzip src="${db.output.local}" destfile="${db.output.local.compressed}"/>
+		<delete file="${db.output.local}"/>
+		
+		<echo message="Created database backup: ${db.output.local.compressed}"/>
 	</target>
 
 	<target name="purge">
