@@ -38,7 +38,7 @@
 				keyfile="${prop.source.keyfile}"
 				command="TMPFILE=`${mktemp}` &amp;&amp; ${echo} $${TMPFILE}"
 				outputproperty="db.output.remote"
-				failonerror="false"/>
+				failonerror="true"/>
 		
 		<!-- create backup script -->
 		<property name="script.backup"
